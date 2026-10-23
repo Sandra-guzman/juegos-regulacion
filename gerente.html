@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gerente de Riesgos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+/* Concepto: expediente de la Superintendencia. Papel cálido, tinta azul, sellos de APROBADO y MULTA; el presupuesto es el protagonista de la pantalla. */
+:root{
+  --bg:#f3f1ec; --paper:#fffefb; --fg:#14213a; --muted:#5d6678; --line:#d9d6cc;
+  --navy:#0b2545; --gold:#a8841c; --goldbg:#f5ecd0; --resbg:#e9edf4;
+  --ok:#1f7a5c; --okbg:#e0f1ea; --bad:#8b1e3f; --badbg:#f6e1e8; --warn:#9a6b00;
+  --input:#fff8dc; --on-navy:#f3f1ec;
+  --display:"Newsreader",Georgia,serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c1424; --paper:#142038; --fg:#e8ecf4; --muted:#9aa5bd; --line:#293653;
+  --navy:#9db8e6; --gold:#e0bb4a; --goldbg:#2c2713; --resbg:#1b2947;
+  --ok:#5fcf9f; --okbg:#12332a; --bad:#f08aa5; --badbg:#3a1826; --warn:#e0b24a;
+  --input:#2a2510; --on-navy:#0c1424; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1424; --paper:#142038; --fg:#e8ecf4; --muted:#9aa5bd; --line:#293653;
+  --navy:#9db8e6; --gold:#e0bb4a; --goldbg:#2c2713; --resbg:#1b2947;
+  --ok:#5fcf9f; --okbg:#12332a; --bad:#f08aa5; --badbg:#3a1826; --warn:#e0b24a;
+  --input:#2a2510; --on-navy:#0c1424; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--display);color:var(--navy);margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.08;font-weight:600}
+h2{font-size:21px;font-weight:600} h3{font-size:17px;font-weight:600}
+.eyebrow{font:600 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.lede{color:var(--muted);max-width:66ch;margin:6px 0 0}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:20px;align-items:start}
+@media (max-width:860px){.cols{grid-template-columns:1fr}}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:18px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+label.f b{color:var(--fg);font-weight:600}
+input[type=text],select{font:500 15px var(--body);background:var(--input);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:9px 10px;width:100%;min-width:0}
+select{background:var(--paper)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+button{font:600 14px var(--body);cursor:pointer;border-radius:4px;border:1px solid var(--navy);background:transparent;color:var(--navy);padding:9px 14px}
+button.primary{background:var(--navy);color:var(--on-navy)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.rules{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14px}
+/* HUD */
+.hud{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.hud{grid-template-columns:1fr 1fr}.hud .bud{grid-column:1/-1}}
+.hud>div{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:10px 14px;min-width:0}
+.hud .k{font:600 10.5px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.hud .v{font:600 22px var(--mono);color:var(--navy);font-variant-numeric:tabular-nums}
+.bud .v{font-size:32px}
+.bar{height:8px;background:var(--resbg);border-radius:4px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
+.bar i.low{background:var(--bad)} .bar i.mid{background:var(--warn)}
+.delta{font:600 13px var(--mono)} .delta.up{color:var(--ok)} .delta.dn{color:var(--bad)}
+/* pregunta */
+.qhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.tag{font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:2px 8px;color:var(--muted)}
+.q{font-family:var(--display);font-size:21px;line-height:1.3;color:var(--fg);margin:2px 0}
+.stakes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--line);background:var(--paper);color:var(--fg);padding:6px 12px;font:600 13px var(--mono)}
+.chip[aria-pressed="true"]{background:var(--navy);color:var(--on-navy);border-color:var(--navy)}
+.hints{display:flex;gap:8px;flex-wrap:wrap}
+.hbtn{border-color:var(--gold);color:var(--gold);font-size:13px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;font-weight:500;color:var(--fg);border:1px solid var(--line);background:var(--paper);padding:11px 14px;display:flex;gap:10px}
+.opt:hover:not(:disabled){border-color:var(--navy)}
+.opt .l{font:600 13px var(--mono);color:var(--muted)}
+.opt.gone{text-decoration:line-through;opacity:.35}
+.opt.right{border-color:var(--ok);background:var(--okbg)} .opt.wrong{border-color:var(--bad);background:var(--badbg)}
+.hint{border-left:3px solid var(--gold);background:var(--goldbg);padding:9px 12px;font-size:14px;border-radius:0 4px 4px 0}
+.numrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.numrow input{width:180px;font-family:var(--mono)}
+.slots{display:flex;flex-direction:column;gap:6px}
+.slot{display:flex;gap:10px;align-items:center;border:1px dashed var(--line);border-radius:4px;padding:8px 12px;min-height:40px}
+.slot .n{font:600 13px var(--mono);color:var(--muted);width:20px}
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.pool button{font-weight:500;color:var(--fg);border-color:var(--line);background:var(--paper);text-align:left}
+.pairs{display:flex;flex-direction:column;gap:8px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:10px;align-items:center}
+@media (max-width:560px){.pair{grid-template-columns:1fr}}
+.pair .lft{font-weight:600}
+/* feedback */
+.fb{border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.fb.ok{background:var(--okbg);border-color:var(--ok)} .fb.no{background:var(--badbg);border-color:var(--bad)}
+.stamp{align-self:flex-start;font:600 15px var(--display);letter-spacing:.14em;text-transform:uppercase;border:3px solid;padding:3px 12px;border-radius:4px;transform:rotate(-2.5deg)}
+.ok .stamp{color:var(--ok)} .no .stamp{color:var(--bad)}
+.fb ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14.5px}
+.fb .why{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:10px 12px}
+.fb .why b{color:var(--navy)}
+.steps{font:400 13.5px var(--mono);margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.mk{font-weight:700} .mk.ok{color:var(--ok)} .mk.no{color:var(--bad)}
+/* tabla */
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+th{font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.r,th.r{text-align:right;font-family:var(--mono)}
+tr.me td{background:var(--goldbg)}
+.rk{font:600 13px var(--mono);color:var(--muted);width:28px}
+.live{display:inline-block;font:600 10px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--ok);border:1px solid var(--ok);border-radius:3px;padding:0 5px;margin-left:6px}
+.banner{border:1px solid var(--gold);background:var(--goldbg);padding:9px 12px;border-radius:4px;font-size:13.5px}
+.big{font:600 52px var(--mono);color:var(--navy);line-height:1}
+.bk{display:flex;align-items:center;gap:8px}
+.bk .bb{height:8px;background:var(--bad);border-radius:3px;min-width:2px}
+@media (prefers-reduced-motion:no-preference){.stamp{animation:pop .25s ease-out}@keyframes pop{from{transform:scale(1.4) rotate(-2.5deg);opacity:0}}}
+</style>
+</head><body><main><header><div class="eyebrow">Mercados Financieros Globales · Sesión 6</div><h1>Gerente de Riesgos</h1><p class="lede">Administras $200 M. Llega una noticia, repartes el capital y descubres cómo la regulación y el mercado mueven tu fondo.</p></header><div id="app"></div><p class="muted small"><a href="index.html" style="color:var(--navy)">← Todos los juegos</a></p></main><script>
+var $app=document.getElementById("app");
+function nf(x,d){return new Intl.NumberFormat("es-CO",{minimumFractionDigits:d||0,maximumFractionDigits:d||0}).format(x)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+var AS=[{k:"dep",n:"Depósitos bancarios",d:"CDT y ahorros. Fogafín cubre $50 M por ahorrador y por entidad."},{k:"acc",n:"Acciones (COLCAP)",d:"Renta variable local."},{k:"usd",n:"Dólares",d:"Se valoriza si el peso se debilita."},{k:"oro",n:"Oro",d:"Materia prima refugio."},{k:"cri",n:"Criptoactivos",d:"Sin seguro de depósitos ni ley específica."}];
+var CAP0=200,NR=8,ADV=2;
+var EV=[
+{id:"tasa",h:"El Banco de la República sube la tasa de intervención a 12,25%",b:"La Junta decide, con autonomía, endurecer la política monetaria.",slide:6,r:{dep:1.5,acc:-4,usd:-1,oro:-2,cri:-5},exp:"Tasas más altas pagan más a los depósitos y encarecen el crédito, lo que presiona a las acciones y a los activos sin flujo."},
+{id:"peso",h:"El peso se fortalece: la TRM baja a $3.170",b:"Entran dólares al país y el tipo de cambio cae.",slide:11,r:{dep:0.3,acc:2,usd:-3.5,oro:-1.5,cri:1},exp:"Quien tiene dólares pierde al convertir a pesos cuando el peso se aprecia."},
+{id:"oro",h:"Alerta: el oro cae 25,7% frente a su récord",b:"Corrección fuerte en materias primas y severidad regulatoria 6 en el tablero.",slide:36,r:{dep:0,acc:-1,usd:1,oro:-9,cri:-2},exp:"El oro puede dejar de ser 'refugio' cuando hay ventas masivas; el tablero lo marcó en rojo."},
+{id:"exch",h:"Quiebra un exchange de criptoactivos",b:"Sus clientes no pueden retirar. No hay supervisión plena de la SFC sobre esa operación.",slide:29,r:{dep:0,acc:-0.5,usd:0.5,oro:0.5,cri:-70},exp:"Un exchange no tiene seguro de depósitos: la pérdida puede ser del 100% del saldo allí custodiado."},
+{id:"banco",h:"Un banco es puesto en liquidación",b:"La SFC ordena liquidar una entidad. Uno de tus bancos es el afectado.",slide:9,special:"banco",r:{dep:0,acc:-1.5,usd:0.5,oro:0.5,cri:-1},exp:"Fogafín cubre hasta $50 M por ahorrador y por entidad. Repartir depósitos entre varios bancos aumenta la cobertura."},
+{id:"frtb",h:"La UE aplaza FRTB hasta el 1-ene-2027",b:"Los bancos europeos ganan tiempo para ajustar su capital por riesgo de mercado.",slide:18,r:{dep:0,acc:1,usd:0,oro:0,cri:0.5},exp:"Un aplazamiento es neutro para el ahorrador: cambia el calendario regulatorio, no los precios de forma directa."},
+{id:"fed",h:"La Fed mantiene su tasa en 3,75–4,00% y el UST a 10 años sube a 5,10%",b:"El dólar se fortalece en el mundo.",slide:15,r:{dep:0,acc:-1.5,usd:2,oro:-1.5,cri:-3},exp:"Tasas altas en EE. UU. atraen capital al dólar y restan atractivo al oro y a los activos de riesgo."},
+{id:"colcap",h:"El COLCAP se acerca a su récord (2.589 vs 2.626)",b:"Los inversionistas locales compran acciones.",slide:33,r:{dep:0,acc:3,usd:-0.5,oro:0,cri:1.5},exp:"El tablero lo mostró en verde: poca distancia al máximo y poca presión regulatoria."},
+{id:"wti",h:"El petróleo WTI sube a US$95,78",b:"Más ingresos esperados para las petroleras y para el fisco.",slide:33,r:{dep:0,acc:2.5,usd:-1,oro:1.5,cri:0},exp:"Colombia es exportadora de crudo: un mejor precio suele favorecer al peso y a las acciones energéticas."},
+{id:"clarity",h:"Avanza en EE. UU. el CLARITY Act sobre cripto",b:"Se reparten competencias entre la SEC y la CFTC.",slide:28,r:{dep:0,acc:0.5,usd:0,oro:-0.5,cri:12},exp:"Más claridad regulatoria reduce incertidumbre y suele impulsar el precio, aunque no crea un seguro para el inversionista."},
+{id:"fin",h:"Entra en vigor el Decreto 368: finanzas abiertas",b:"Los clientes podrán compartir sus datos con otras entidades con su consentimiento.",slide:10,r:{dep:0.2,acc:0.5,usd:0,oro:0,cri:0},exp:"Es una noticia de estructura: casi no mueve precios. Saber distinguir ruido de señal también es gestión de riesgos."},
+{id:"vix",h:"El VIX baja a 16: poca volatilidad",b:"El mercado está tranquilo.",slide:33,r:{dep:0,acc:2,usd:-0.5,oro:-0.5,cri:3},exp:"Con volatilidad baja se toma más riesgo: suben acciones y cripto, se enfrían los refugios."}];
+var S={view:"home",cap:CAP0,round:0,evs:[],al:{dep:20,acc:20,usd:20,oro:20,cri:20},nb:1,hint:false,res:null,hist:[],bench:CAP0,advUsed:0,best:+(ls("gr_best")||0)};
+function start(){
+  var rest=shuffle(EV.filter(function(e){return e.id!=="banco"&&e.id!=="exch"})),pick=[EV[4]];
+  if(Math.random()<0.7)pick.push(EV[3]);
+  S.evs=shuffle(pick.concat(rest.slice(0,NR-pick.length)));
+  S.cap=CAP0;S.bench=CAP0;S.round=0;S.hist=[];S.hint=false;S.res=null;S.advUsed=0;S.view="play";render();
+}
+function sum(){return AS.reduce(function(a,x){return a+S.al[x.k]},0)}
+function retOf(e,al,nb,cap){
+  var r={},k;for(k in e.r)r[k]=e.r[k];
+  if(e.special==="banco"){var dep=cap*al.dep/100,per=dep/nb,loss=Math.max(0,per-50);r.dep=dep>0?-loss/dep*100:0}
+  return r;
+}
+function close(){
+  if(sum()!==100)return;var e=S.evs[S.round],r=retOf(e,S.al,S.nb,S.cap),rows=[],tot=0;
+  AS.forEach(function(a){var m=S.cap*S.al[a.k]/100,p=m*r[a.k]/100;tot+=p;rows.push({a:a,m:m,r:r[a.k],p:p})});
+  var rb=retOf(e,{dep:20,acc:20,usd:20,oro:20,cri:20},1,S.bench),bt=0;AS.forEach(function(a){bt+=S.bench*0.2*rb[a.k]/100});
+  S.hist.push({e:e,tot:tot,bt:bt,al:JSON.parse(JSON.stringify(S.al)),nb:S.nb,rows:rows});
+  S.cap+=tot;S.bench+=bt;S.res={rows:rows,tot:tot,e:e};render();
+}
+function nextRound(){
+  S.round++;S.res=null;S.hint=false;
+  if(S.round>=NR||S.cap<=0){S.view="end";if(S.cap>S.best){S.best=S.cap;ls("gr_best",String(S.cap))}}
+  render();
+}
+function advise(){if(S.hint||S.res)return;S.cap-=ADV;S.advUsed++;S.hint=true;render()}
+function arrow(v,e){return v>=1?'<span style="color:var(--ok)">▲ sube</span>':v<=-1?'<span style="color:var(--bad)">▼ baja</span>':'<span class="muted">— poco</span>'}
+function hud(){return '<div class="hud"><div class="bud"><div class="k">Capital</div><div class="v">$'+nf(S.cap,1)+' M</div><div class="bar"><i class="'+(S.cap<150?"low":S.cap<200?"mid":"")+'" style="width:'+Math.min(100,S.cap/3)+'%"></i></div></div><div><div class="k">Ronda</div><div class="v">'+Math.min(S.round+1,NR)+'/'+NR+'</div></div><div><div class="k">Ingenuo</div><div class="v" style="font-size:18px">$'+nf(S.bench,1)+'</div></div><div><div class="k">Mejor</div><div class="v" style="font-size:18px">'+(S.best?'$'+nf(S.best,0):'—')+'</div></div></div>'}
+function home(){return '<div class="card stack"><h2>Tu mandato</h2><p style="margin:0">Administras <b>$200 M</b> de un fondo. Cada ronda llega una noticia financiera o regulatoria. Antes de cerrar la ronda, decides cómo repartir el capital entre cinco activos.</p><ul class="rules"><li>Ves solo el titular. Si quieres saber hacia dónde se mueve cada activo, puedes <b>consultar al regulador</b>, pero la consulta cuesta <b>$'+ADV+' M</b> por ronda.</li><li>Tus depósitos pueden estar en 1 a 4 bancos. Si un banco se liquida, solo se cubren $50 M por banco.</li><li>Compárate con el <b>portafolio ingenuo</b> (20% en cada activo y un solo banco).</li><li>Al final, un reporte te dice qué noticias te costaron dinero y por qué.</li></ul><button class="primary" id="go">Empezar</button></div>'}
+function play(){
+  var e=S.evs[S.round],h=hud();
+  h+='<div class="card stack"><div class="qhead"><span class="tag">Noticia</span></div><div class="q">'+esc(e.h)+'</div><div class="muted">'+esc(e.b)+'</div>';
+  if(!S.res){
+    h+='<div class="hints"><button class="hbtn" id="adv"'+(S.hint?" disabled":"")+'>Consultar al regulador · −$'+ADV+' M</button><span class="muted small">Revela hacia dónde se mueve cada activo.</span></div>';
+    var r0=retOf(e,S.al,S.nb,S.cap);
+    h+='<div class="stack">'+AS.map(function(a){return '<div><div class="bk" style="gap:12px"><b style="min-width:150px">'+a.n+'</b><input type="range" min="0" max="100" step="5" value="'+S.al[a.k]+'" data-a="'+a.k+'" style="flex:1;min-width:80px"><span class="mono" style="width:90px;text-align:right">'+S.al[a.k]+'% · $'+nf(S.cap*S.al[a.k]/100,0)+'</span>'+(S.hint?'<span class="small" style="width:70px">'+arrow(r0[a.k])+'</span>':'')+'</div><div class="muted small">'+a.d+'</div></div>'}).join("")+'</div>';
+    h+='<label class="f" style="max-width:260px"><b>Bancos donde repartes los depósitos</b><select id="nb">'+[1,2,3,4].map(function(v){return '<option'+(v===S.nb?" selected":"")+'>'+v+'</option>'}).join("")+'</select></label>';
+    var t=sum();h+='<div id="tot" class="'+(t===100?"":"banner")+'">'+(t===100?'Total: 100%':'Total: '+t+'% — '+(t<100?'faltan '+(100-t)+'%':'sobran '+(t-100)+'%'))+'</div><button class="primary" id="cl" style="align-self:flex-start"'+(t===100?"":" disabled")+'>Cerrar ronda</button>';
+  }
+  h+='</div>';
+  if(S.res){
+    var ok=S.res.tot>=0;
+    h+='<div class="fb '+(ok?"ok":"no")+'"><div class="stamp">'+(ok?"Ganancia":"Pérdida")+'</div><div class="delta '+(ok?"up":"dn")+'">'+(ok?"+":"−")+'$'+nf(Math.abs(S.res.tot),1)+' M</div><div class="tw"><table><thead><tr><th>Activo</th><th class="r">Invertido</th><th class="r">Retorno</th><th class="r">Resultado</th></tr></thead><tbody>'+S.res.rows.map(function(x){return '<tr><td>'+x.a.n+'</td><td class="r">$'+nf(x.m,1)+'</td><td class="r">'+(x.r>0?"+":"")+nf(x.r,1)+'%</td><td class="r" style="color:var(--'+(x.p>=0?"ok":"bad")+')">'+(x.p>0?"+":"")+nf(x.p,1)+'</td></tr>'}).join("")+'</tbody></table></div><div><b>Por qué:</b> '+esc(e.exp)+'</div>'+(e.special==="banco"?'<div class="why">Tenías '+nf(S.cap*0+S.hist[S.hist.length-1].al.dep,0)+'% del capital en depósitos repartidos en '+S.hist[S.hist.length-1].nb+' banco(s). La cobertura de Fogafín es de $50 M por entidad.</div>':'')+'<button class="primary" id="nx" style="align-self:flex-start">'+(S.round>=NR-1?"Ver resultado":"Siguiente noticia")+'</button></div>';
+  }
+  return h;
+}
+function endView(){
+  var g=S.cap/CAP0-1,t=g>=0.08?["Gestor de riesgos","Leíste bien la regulación y los mercados."]:g>=0?["Administrador prudente","Protegiste el capital."]:g>-0.15?["Gestor en aprendizaje","Las noticias te costaron dinero."]:["Fondo intervenido","Conviene repasar custodia, seguro de depósitos y diversificación."];
+  var h='<div class="card stack"><div class="eyebrow">Resultado final</div><div class="big">$'+nf(S.cap,1)+' M</div><h2>'+t[0]+'</h2><p class="muted" style="margin:0">'+t[1]+' Retorno: '+(g>=0?"+":"")+nf(g*100,1)+'%. Portafolio ingenuo: $'+nf(S.bench,1)+' M'+(S.advUsed?' · consultas pagadas: '+S.advUsed+' ($'+(S.advUsed*ADV)+' M)':'')+'.</p></div>';
+  var bad=S.hist.filter(function(x){return x.tot<0||x.tot<x.bt}).sort(function(a,b){return (a.tot-a.bt)-(b.tot-b.bt)}).slice(0,5);
+  h+='<div class="card stack"><h2>Reporte de noticias</h2>'+S.hist.map(function(x){var d=x.tot-x.bt;return '<div class="why" style="border:1px solid var(--line);border-radius:4px;padding:10px 12px"><b>'+esc(x.e.h)+'</b><div class="small">Tú: <b class="mono" style="color:var(--'+(x.tot>=0?"ok":"bad")+')">'+(x.tot>=0?"+":"")+nf(x.tot,1)+'</b> · Ingenuo: <span class="mono">'+(x.bt>=0?"+":"")+nf(x.bt,1)+'</span> · '+(d>=0?'le ganaste al ingenuo':'te ganó el ingenuo')+'</div><div class="small muted">'+esc(x.e.exp)+'</div></div>'}).join("")+'</div><div><button class="primary" id="again">Jugar de nuevo</button></div>';
+  return h;
+}
+function render(){
+  var ae=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.a;
+  $app.innerHTML=S.view==="home"?home():S.view==="play"?hud()===""?"":play():endView();
+  var q=function(s){return $app.querySelector(s)};
+  var go=q("#go");if(go)go.onclick=start;
+  Array.prototype.forEach.call($app.querySelectorAll("[data-a]"),function(i){i.oninput=function(){S.al[i.dataset.a]=+i.value;i.nextElementSibling.textContent=S.al[i.dataset.a]+"% · $"+nf(S.cap*S.al[i.dataset.a]/100,0);var t=sum(),b=q("#tot");b.className=t===100?"":"banner";b.textContent=t===100?"Total: 100%":"Total: "+t+"% — "+(t<100?"faltan "+(100-t)+"%":"sobran "+(t-100)+"%");q("#cl").disabled=t!==100};i.onchange=render});
+  var nb=q("#nb");if(nb)nb.onchange=function(){S.nb=+nb.value};
+  var a=q("#adv");if(a)a.onclick=advise;
+  var c=q("#cl");if(c)c.onclick=close;
+  var n=q("#nx");if(n)n.onclick=nextRound;
+  var ag=q("#again");if(ag)ag.onclick=start;
+}
+render();
+
+</script></body></html>

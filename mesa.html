@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mesa de Cumplimiento</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+/* Concepto: expediente de la Superintendencia. Papel cálido, tinta azul, sellos de APROBADO y MULTA; el presupuesto es el protagonista de la pantalla. */
+:root{
+  --bg:#f3f1ec; --paper:#fffefb; --fg:#14213a; --muted:#5d6678; --line:#d9d6cc;
+  --navy:#0b2545; --gold:#a8841c; --goldbg:#f5ecd0; --resbg:#e9edf4;
+  --ok:#1f7a5c; --okbg:#e0f1ea; --bad:#8b1e3f; --badbg:#f6e1e8; --warn:#9a6b00;
+  --input:#fff8dc; --on-navy:#f3f1ec;
+  --display:"Newsreader",Georgia,serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c1424; --paper:#142038; --fg:#e8ecf4; --muted:#9aa5bd; --line:#293653;
+  --navy:#9db8e6; --gold:#e0bb4a; --goldbg:#2c2713; --resbg:#1b2947;
+  --ok:#5fcf9f; --okbg:#12332a; --bad:#f08aa5; --badbg:#3a1826; --warn:#e0b24a;
+  --input:#2a2510; --on-navy:#0c1424; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1424; --paper:#142038; --fg:#e8ecf4; --muted:#9aa5bd; --line:#293653;
+  --navy:#9db8e6; --gold:#e0bb4a; --goldbg:#2c2713; --resbg:#1b2947;
+  --ok:#5fcf9f; --okbg:#12332a; --bad:#f08aa5; --badbg:#3a1826; --warn:#e0b24a;
+  --input:#2a2510; --on-navy:#0c1424; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--display);color:var(--navy);margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.08;font-weight:600}
+h2{font-size:21px;font-weight:600} h3{font-size:17px;font-weight:600}
+.eyebrow{font:600 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.lede{color:var(--muted);max-width:66ch;margin:6px 0 0}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:20px;align-items:start}
+@media (max-width:860px){.cols{grid-template-columns:1fr}}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:18px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+label.f b{color:var(--fg);font-weight:600}
+input[type=text],select{font:500 15px var(--body);background:var(--input);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:9px 10px;width:100%;min-width:0}
+select{background:var(--paper)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+button{font:600 14px var(--body);cursor:pointer;border-radius:4px;border:1px solid var(--navy);background:transparent;color:var(--navy);padding:9px 14px}
+button.primary{background:var(--navy);color:var(--on-navy)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.rules{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14px}
+/* HUD */
+.hud{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.hud{grid-template-columns:1fr 1fr}.hud .bud{grid-column:1/-1}}
+.hud>div{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:10px 14px;min-width:0}
+.hud .k{font:600 10.5px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.hud .v{font:600 22px var(--mono);color:var(--navy);font-variant-numeric:tabular-nums}
+.bud .v{font-size:32px}
+.bar{height:8px;background:var(--resbg);border-radius:4px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
+.bar i.low{background:var(--bad)} .bar i.mid{background:var(--warn)}
+.delta{font:600 13px var(--mono)} .delta.up{color:var(--ok)} .delta.dn{color:var(--bad)}
+/* pregunta */
+.qhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.tag{font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:2px 8px;color:var(--muted)}
+.q{font-family:var(--display);font-size:21px;line-height:1.3;color:var(--fg);margin:2px 0}
+.stakes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--line);background:var(--paper);color:var(--fg);padding:6px 12px;font:600 13px var(--mono)}
+.chip[aria-pressed="true"]{background:var(--navy);color:var(--on-navy);border-color:var(--navy)}
+.hints{display:flex;gap:8px;flex-wrap:wrap}
+.hbtn{border-color:var(--gold);color:var(--gold);font-size:13px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;font-weight:500;color:var(--fg);border:1px solid var(--line);background:var(--paper);padding:11px 14px;display:flex;gap:10px}
+.opt:hover:not(:disabled){border-color:var(--navy)}
+.opt .l{font:600 13px var(--mono);color:var(--muted)}
+.opt.gone{text-decoration:line-through;opacity:.35}
+.opt.right{border-color:var(--ok);background:var(--okbg)} .opt.wrong{border-color:var(--bad);background:var(--badbg)}
+.hint{border-left:3px solid var(--gold);background:var(--goldbg);padding:9px 12px;font-size:14px;border-radius:0 4px 4px 0}
+.numrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.numrow input{width:180px;font-family:var(--mono)}
+.slots{display:flex;flex-direction:column;gap:6px}
+.slot{display:flex;gap:10px;align-items:center;border:1px dashed var(--line);border-radius:4px;padding:8px 12px;min-height:40px}
+.slot .n{font:600 13px var(--mono);color:var(--muted);width:20px}
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.pool button{font-weight:500;color:var(--fg);border-color:var(--line);background:var(--paper);text-align:left}
+.pairs{display:flex;flex-direction:column;gap:8px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:10px;align-items:center}
+@media (max-width:560px){.pair{grid-template-columns:1fr}}
+.pair .lft{font-weight:600}
+/* feedback */
+.fb{border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.fb.ok{background:var(--okbg);border-color:var(--ok)} .fb.no{background:var(--badbg);border-color:var(--bad)}
+.stamp{align-self:flex-start;font:600 15px var(--display);letter-spacing:.14em;text-transform:uppercase;border:3px solid;padding:3px 12px;border-radius:4px;transform:rotate(-2.5deg)}
+.ok .stamp{color:var(--ok)} .no .stamp{color:var(--bad)}
+.fb ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14.5px}
+.fb .why{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:10px 12px}
+.fb .why b{color:var(--navy)}
+.steps{font:400 13.5px var(--mono);margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.mk{font-weight:700} .mk.ok{color:var(--ok)} .mk.no{color:var(--bad)}
+/* tabla */
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+th{font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.r,th.r{text-align:right;font-family:var(--mono)}
+tr.me td{background:var(--goldbg)}
+.rk{font:600 13px var(--mono);color:var(--muted);width:28px}
+.live{display:inline-block;font:600 10px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--ok);border:1px solid var(--ok);border-radius:3px;padding:0 5px;margin-left:6px}
+.banner{border:1px solid var(--gold);background:var(--goldbg);padding:9px 12px;border-radius:4px;font-size:13.5px}
+.big{font:600 52px var(--mono);color:var(--navy);line-height:1}
+.bk{display:flex;align-items:center;gap:8px}
+.bk .bb{height:8px;background:var(--bad);border-radius:3px;min-width:2px}
+@media (prefers-reduced-motion:no-preference){.stamp{animation:pop .25s ease-out}@keyframes pop{from{transform:scale(1.4) rotate(-2.5deg);opacity:0}}}
+</style>
+</head><body><main><header><div class="eyebrow">Mercados Financieros Globales · Sesión 6</div><h1>Mesa de Cumplimiento</h1><p class="lede">Eres el oficial de cumplimiento de una entidad financiera y administras un presupuesto. Cada decisión correcta lo hace crecer; cada error cuesta una multa. Cada pista también cuesta.</p></header><div id="app"></div><p class="muted small"><a href="index.html" style="color:var(--navy)">← Todos los juegos</a></p></main><script>
+/* ===== Utilidades de contenido ===== */
+function rnd(){return Math.random()}
+function ri(a,b,st){st=st||1;return a+st*Math.floor(rnd()*(Math.floor((b-a)/st)+1))}
+function pick(a){return a[Math.floor(rnd()*a.length)]}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(rnd()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function nf(x,d){return new Intl.NumberFormat("es-CO",{minimumFractionDigits:d||0,maximumFractionDigits:d||0}).format(x)}
+function M(x){return "$"+nf(x,0)+" M"}
+
+/* mcq: opts = [texto, correcta(bool), porqué-falla] */
+function mcq(id,b,slide,label,text,opts,exp,hint2,o){
+  o=o||{};
+  return {id:id,b:b,slide:slide,label:label,type:"mcq",tf:!!o.tf,spot:!!o.spot,text:text,opts:opts.map(function(x){return{t:x[0],ok:!!x[1],why:x[2]||""}}),exp:exp,hint2:hint2,shuffle:o.shuffle!==false};
+}
+function ordq(id,b,slide,label,text,items,exp,hint2){return {id:id,b:b,slide:slide,label:label,type:"order",text:text,items:items,exp:exp,hint2:hint2}}
+function matq(id,b,slide,label,text,pairs,exp,hint2){return {id:id,b:b,slide:slide,label:label,type:"match",text:text,pairs:pairs,exp:exp,hint2:hint2}}
+
+var POOL={N:[],I:[],D:[],T:[]};
+
+/* ======= BLOQUE 1 · MARCO NACIONAL ======= */
+POOL.N.push(function(){return mcq("N1","N",6,"Quién fija la tasa de intervención","El 30 de septiembre de 2026 se subió la tasa de intervención a 12,25%. ¿Qué entidad toma esa decisión?",[
+ ["Banco de la República",1],["Superintendencia Financiera",0,"La SFC supervisa y sanciona entidades; no fija tasas de política."],["Fogafín",0,"Fogafín asegura depósitos; no hace política monetaria."],["Congreso de la República",0,"El Congreso expide leyes marco, pero la tasa la decide la Junta del BanRep."]],
+ "La Junta Directiva del BanRep fija la tasa de intervención, con autonomía constitucional.","Piense en quién tiene autonomía constitucional (arts. 371-373).")});
+POOL.N.push(function(){return mcq("N2","N",6,"Base de la autonomía del BanRep","¿Qué normas dan al Banco de la República su autonomía frente al Gobierno?",[
+ ["Constitución arts. 371-373 y Ley 31 de 1992",1],["Ley 964 de 2005 y Decreto 2555 de 2010",0,"Eso es el régimen del mercado de valores, supervisado por la SFC."],["Circular Externa 004 de 2026",0,"Es una circular contable y de reporte de la SFC, de rango muy inferior."],["Decreto 368 de 2026",0,"Es el decreto de finanzas abiertas; no toca la autonomía del BanRep."]],
+ "La autonomía viene de la Constitución y de la Ley 31/1992: es la norma de más alto rango, y por eso el Ejecutivo no puede ordenarle a la Junta qué tasa fijar.","Es una norma de rango constitucional.")});
+POOL.N.push(function(){return mcq("N3","N",7,"Qué es el AMV","¿Qué entidad certifica a los operadores de bolsa, vigila su conducta y sanciona malas prácticas antes que la SFC?",[
+ ["AMV (Autorregulador del Mercado de Valores)",1],["Fogafín",0,"Fogafín asegura depósitos del público."],["Banco de la República",0,"El BanRep no vigila a los intermediarios bursátiles."],["Congreso de la República",0,"El Congreso hace leyes; no certifica operadores."]],
+ "El AMV es privado con función pública: es la primera línea de defensa del mercado, antes de llegar a la SFC.","Es un autorregulador: actúa antes que el regulador estatal.")});
+POOL.N.push(function(){return mcq("N4","N",7,"La Circular Externa 004","¿Qué cambió con la Circular Externa 004 de 2026, vigente desde el 1 de junio?",[
+ ["Reemplazó la Circular 100 de 1995 con nuevas reglas contables y de reporte",1],["Creó el seguro de depósitos",0,"El seguro de depósitos lo administra Fogafín y no nació con esta circular."],["Obligó a compartir datos de clientes",0,"Eso es el Decreto 368 de 2026 (finanzas abiertas)."],["Reguló las criptomonedas",0,"No: los activos digitales siguen sin ley específica."]],
+ "Es la actualización de las reglas contables y de reporte para todas las entidades vigiladas por la SFC.","Es una circular de la SFC sobre contabilidad y reportes.")});
+POOL.N.push(function(){return mcq("N5","N",8,"Jerarquía de normas","Una circular de la SFC contradice un decreto del Gobierno. ¿Cuál prevalece?",[
+ ["El decreto",1],["La circular, por ser más reciente",0,"La fecha no decide: decide la jerarquía. Una circular no puede contradecir un decreto."],["La que más favorezca al cliente",0,"No es un criterio de jerarquía normativa."],["Ninguna: lo decide el AMV",0,"El AMV autorregula intermediarios; no resuelve conflictos entre normas."]],
+ "Regla práctica: una circular no puede contradecir un decreto, ni un decreto una ley.","Constitución > ley > decreto > circular.")});
+POOL.N.push(function(){return ordq("N6","N",8,"Orden jerárquico de las normas","Ordene de la norma de MAYOR a la de MENOR jerarquía.",[
+ {t:"Constitución Política de 1991",n:"Es la norma suprema."},{t:"Ley 964 de 2005",n:"Una ley: la expide el Congreso."},{t:"Decreto 2555 de 2010",n:"Un decreto: lo expide el Gobierno para desarrollar leyes."},{t:"Circular Externa 004 de 2026",n:"Una circular de la SFC: la más técnica y la que más cambia."}],
+ "Cuanto más abajo, más técnica y más fácil de cambiar.","Empiece por la norma que casi nunca cambia.")});
+POOL.N.push(function(){
+  var all=[{l:"Congreso de la República",r:"Expide las leyes marco"},{l:"Banco de la República",r:"Política monetaria y tasa de interés"},{l:"Superintendencia Financiera",r:"Supervisa bancos, bolsa, seguros y pensiones"},{l:"AMV",r:"Autorregula a los intermediarios del mercado"},{l:"Fogafín",r:"Asegura los depósitos del ahorrador"}];
+  return matq("N7","N",5,"Quién hace qué","Una cada entidad con su función.",shuffle(all).slice(0,4),"Crea las reglas (Congreso), las aplica (BanRep, SFC), y opera y protege (AMV, Fogafín).","Recuerde: crea, aplica, opera y protege.")});
+POOL.N.push(function(){
+  var A=ri(20,120,5),B=ri(20,120,5);while(A<=50&&B<=50){A=ri(20,120,5);B=ri(20,120,5)}
+  var ca=Math.min(A,50),cb=Math.min(B,50),ans=ca+cb;
+  return {id:"N8",b:"N",slide:9,label:"Seguro de depósitos, dos bancos",type:"calc",unit:"millones de pesos",
+  text:"Un ahorrador tiene "+M(A)+" en el Banco A y "+M(B)+" en el Banco B. Ambos bancos entran en liquidación. Fogafín cubre hasta $50 M por ahorrador y por entidad. ¿Cuántos millones le cubre en total?",
+  ans:ans,tol:0.01,formula:"Cubierto por banco = mín(saldo; 50). Total = suma de los dos bancos.",
+  steps:["Banco A: mín("+A+"; 50) = "+ca,"Banco B: mín("+B+"; 50) = "+cb,"Total cubierto: "+ca+" + "+cb+" = "+ans+" M"],
+  partial:"En el Banco A le cubren "+M(ca)+".",
+  diag:function(v){if(v===A+B)return "Sumaste los saldos completos: olvidaste que el tope de $50 M se aplica por entidad.";if(v===50)return "Aplicaste un único tope de $50 M. El tope es por ahorrador y por entidad, así que se aplica en cada banco.";if(v===A+B-ans)return "Calculaste lo NO cubierto, no lo cubierto.";return null},
+  exp:"Cada entidad se evalúa por separado: repartir el dinero entre bancos aumenta la cobertura.",hint2:"El tope se aplica por entidad, no al total."}});
+POOL.N.push(function(){
+  var X=ri(130,230,10),ans=Math.ceil(X/50);
+  return {id:"N9",b:"N",slide:9,label:"Cuántos bancos para cubrirse",type:"calc",unit:"bancos",
+  text:"Un ahorrador quiere dejar "+M(X)+" 100% cubiertos por Fogafín, repartidos en partes iguales entre varios bancos. ¿Cuál es el mínimo de bancos que necesita?",
+  ans:ans,tol:0.01,formula:"Bancos = saldo total ÷ 50, redondeado hacia ARRIBA.",
+  steps:[X+" ÷ 50 = "+nf(X/50,2),"Se redondea hacia arriba: "+ans+" bancos","Cada banco recibe ≈ "+nf(X/ans,1)+" M (≤ 50)"],
+  partial:X+" ÷ 50 = "+nf(X/50,2)+".",
+  diag:function(v){if(v===Math.floor(X/50))return "Redondeaste hacia abajo: con ese número de bancos, cada uno quedaría con más de $50 M y parte quedaría sin cubrir.";return null},
+  exp:"Es diversificar el riesgo de contraparte: nadie pone más de $50 M en una sola entidad.",hint2:"Divida entre el tope y redondee hacia arriba."}});
+POOL.N.push(function(){return mcq("N10","N",9,"Qué NO cubre Fogafín","¿Cuál de estos productos NO está cubierto por el seguro de depósitos de Fogafín?",[
+ ["Bonos emitidos por el banco",1],["Certificado de Depósito a Término (CDT)",0,"El CDT sí está cubierto, dentro del tope."],["Cuenta de ahorros",0,"Los depósitos de ahorro sí están cubiertos."],["Cuenta corriente",0,"Las cuentas corrientes sí están cubiertas."]],
+ "Fogafín cubre depósitos (ahorros, CDT, cuenta corriente). Quedan por fuera bonos, seguros, productos fiduciarios, préstamos y fraude.","El seguro protege depósitos, no inversiones en títulos.")});
+POOL.N.push(function(){return mcq("N11","N",10,"Datos y consentimiento","En las finanzas abiertas (Decreto 368 de 2026), ¿quién decide si los datos de un cliente se comparten con otra entidad?",[
+ ["El cliente, con consentimiento previo, expreso e informado",1],["La SFC, por iniciativa propia",0,"La SFC supervisa el estándar, pero no decide por el cliente."],["La entidad que guarda los datos",0,"La idea es justamente que el cliente deje de ser 'cautivo' de una sola entidad."],["El Congreso, caso por caso",0,"El Congreso no interviene en cada autorización."]],
+ "El cliente es dueño de sus datos: consiente de forma previa, expresa e informada.","Piense en quién es el 'dueño' de los datos.")});
+POOL.N.push(function(){return mcq("N12","N",6,"Independencia del BanRep","Afirmación: «El Gobierno puede ordenar a la Junta del BanRep bajar la tasa antes de unas elecciones».",[
+ ["Falso",1],["Verdadero",0,"Si pudiera, el peso perdería credibilidad: por eso la autonomía es en sí misma una regla."]],
+ "Falso. La autonomía blinda la moneda frente a la política de turno (Constitución y Ley 31/1992).","Revise el argumento de la independencia.",{tf:true,shuffle:false})});
+POOL.N.push(function(){
+  var all=[{l:"Monetario",r:"Banco de la República"},{l:"Capitales",r:"SFC · AMV · BVC"},{l:"Divisas",r:"BanRep · SFC"},{l:"Derivados",r:"SFC · CRCC"},{l:"Materias primas",r:"SFC · BMC"}];
+  return matq("N13","N",11,"Regulador de cada mercado","Una cada mercado con su regulador clave.",shuffle(all).slice(0,4),"Es el mapa del curso: cada mercado tiene un regulador y una norma principal.","Divisas comparte regulador entre dos entidades.")});
+POOL.N.push(function(){return mcq("N14","N",7,"Caza el error","Una de estas afirmaciones es FALSA. ¿Cuál?",[
+ ["El AMV es una entidad estatal",1,""],["La SFC supervisa bancos, bolsa, seguros, pensiones y fintech",0,"Es verdadera."],["Fogafín cubre hasta $50 M por ahorrador y por entidad",0,"Es verdadera."],["El BanRep es autónomo frente al Gobierno",0,"Es verdadera."]],
+ "El AMV es una entidad PRIVADA con función pública, no estatal.","Una de las cuatro mezcla 'privado' con 'estatal'.",{spot:true})});
+
+/* ======= BLOQUE 2 · INTERNACIONAL ======= */
+POOL.I.push(function(){
+  var apnr=pick([80000,100000,120000,150000]),p=ri(82,108,2)/10,pt=Math.round(apnr*p/100),ans=pt/apnr*100;
+  return {id:"I1",b:"I",slide:17,label:"Solvencia total de un banco",type:"calc",unit:"% (un decimal)",
+  text:"Un banco tiene patrimonio técnico de "+M(pt)+" y activos ponderados por riesgo (APNR) de "+M(apnr)+". ¿Cuál es su solvencia total, en %?",
+  ans:ans,tol:0.06,formula:"Solvencia = patrimonio técnico ÷ APNR × 100.",
+  steps:[nf(pt)+" ÷ "+nf(apnr)+" = "+nf(pt/apnr,4),"× 100 = "+nf(ans,1)+"%","Frente al mínimo de 9%: "+(ans>=9?"cumple":"NO cumple")],
+  partial:nf(pt)+" ÷ "+nf(apnr)+" = "+nf(pt/apnr,4)+" (falta convertirlo a %).",
+  diag:function(v){if(Math.abs(v-pt/apnr)<0.01)return "Dividiste bien, pero falta convertir a porcentaje (× 100).";if(Math.abs(v-apnr/pt*100)<0.06)return "Invertiste la razón: es patrimonio técnico ÷ activos ponderados, no al revés.";return null},
+  exp:"Solvencia = patrimonio técnico ÷ APNR. El mínimo total en Colombia es 9%.",hint2:"El numerador es el colchón de capital."}});
+POOL.I.push(function(){
+  var apnr=pick([80000,100000,120000,150000]),p=ri(92,108,2)/10,pt=Math.round(apnr*p/100),req=apnr*0.09,ans=pt-req;
+  return {id:"I2",b:"I",slide:17,label:"Holgura de capital",type:"calc",unit:"millones de pesos",
+  text:"Un banco tiene patrimonio técnico de "+M(pt)+" y APNR de "+M(apnr)+". ¿Cuántos millones puede perder antes de incumplir el mínimo de solvencia de 9%?",
+  ans:ans,tol:0.6,formula:"Holgura = patrimonio técnico − 9% × APNR.",
+  steps:["Patrimonio mínimo: 9% × "+nf(apnr)+" = "+nf(req,0)+" M","Holgura: "+nf(pt)+" − "+nf(req,0)+" = "+nf(ans,0)+" M"],
+  partial:"El patrimonio mínimo exigido es 9% × "+nf(apnr)+" = "+nf(req,0)+" M.",
+  diag:function(v){if(Math.abs(v-req)<1)return "Calculaste el patrimonio MÍNIMO requerido; falta restarlo del patrimonio actual para hallar la holgura.";if(Math.abs(v-(pt-apnr*0.08))<1)return "Usaste 8% (mínimo global de Basilea). En Colombia el mínimo total es 9%.";return null},
+  exp:"La holgura mide cuánta pérdida aguanta un banco antes de incumplir.",hint2:"Primero calcule el patrimonio mínimo exigido."}});
+POOL.I.push(function(){
+  var apnr=100000,p=ri(94,104,2)/10,pt=Math.round(apnr*p/100),L=ri(300,1200,100),ans=(pt-L)/apnr*100;
+  return {id:"I3",b:"I",slide:17,label:"Solvencia después de una pérdida",type:"calc",unit:"% (un decimal)",
+  text:"Un banco con patrimonio técnico de "+M(pt)+" y APNR de "+M(apnr)+" pierde "+M(L)+". ¿Cuál es su solvencia después de la pérdida, en %? (Mínimo: 9%.)",
+  ans:ans,tol:0.06,formula:"Solvencia nueva = (patrimonio − pérdida) ÷ APNR × 100.",
+  steps:["Patrimonio nuevo: "+nf(pt)+" − "+nf(L)+" = "+nf(pt-L),nf(pt-L)+" ÷ "+nf(apnr)+" × 100 = "+nf(ans,1)+"%",ans>=9?"Sigue cumpliendo el 9%.":"Incumple el 9%."],
+  partial:"El patrimonio queda en "+nf(pt-L)+" M.",
+  diag:function(v){if(Math.abs(v-p)<0.06)return "No restaste la pérdida del patrimonio.";if(Math.abs(v-pt/(apnr-L)*100)<0.06)return "La pérdida reduce el patrimonio (numerador), no los activos ponderados.";return null},
+  exp:"Una pérdida se come primero el patrimonio técnico: la solvencia cae aunque los activos no cambien.",hint2:"La pérdida resta del numerador."}});
+POOL.I.push(function(){return mcq("I4","I",18,"Por qué se aplazó FRTB","¿Por qué la Unión Europea aplazó las reglas de riesgo de mercado de Basilea (FRTB)?",[
+ ["Otras jurisdicciones grandes iban retrasadas",1],["Colombia no estaba lista",0,"Colombia no tiene nada que ver con la decisión europea."],["Cerró la bolsa europea",0,"No hubo ningún cierre: es una decisión de política regulatoria."],["Subió el euro",0,"El tipo de cambio no explica el aplazamiento."]],
+ "Un estándar global solo funciona si todos avanzan juntos; aplicarlo antes que otros distorsionaría la competencia.","Piense en la competencia entre bancos de distintos países.")});
+POOL.I.push(function(){return mcq("I5","I",18,"Fecha prevista de FRTB en la UE","Tras el acto delegado del 4 de junio de 2026, ¿desde cuándo se aplicaría FRTB en la UE (si no hay objeción)?",[
+ ["1 de enero de 2027",1],["1 de enero de 2025",0,"Esa era la fecha original, ya aplazada."],["1 de enero de 2026",0,"Fue el primer aplazamiento, ya superado."],["1 de junio de 2026",0,"Esa es la fecha de la Circular Externa 004 en Colombia, no de FRTB."]],
+ "El 4-jun-2026 la Comisión adoptó ajustes temporales por tres años; la aplicación prevista es el 1-ene-2027.","Es el año siguiente a la fecha del acto delegado.")});
+POOL.I.push(function(){return ordq("I6","I",18,"Cronología de FRTB en la UE","Ordene los hitos de FRTB, del más antiguo al más reciente.",[
+ {t:"1-ene-2025: fecha original de aplicación en la UE",n:"La fecha inicial, luego aplazada."},{t:"1-ene-2026: primer aplazamiento",n:"Se aplazó cerca de un año."},{t:"4-jun-2026: acto delegado con ajustes temporales (3 años)",n:"La Comisión adopta ajustes temporales."},{t:"1-ene-2027: aplicación prevista",n:"Si Parlamento y Consejo no objetan."}],
+ "Cada aplazamiento busca esperar a otras jurisdicciones.","La fecha original es la más antigua.")});
+POOL.I.push(function(){
+  var all=[{l:"Basilea III",r:"Capital mínimo de los bancos"},{l:"MiFID II",r:"Transparencia de precios y protección al inversionista minorista (UE)"},{l:"IOSCO",r:"Organización de reguladores de valores"},{l:"GAFI / GAFILAT",r:"Lucha contra el lavado de activos y la financiación del terrorismo"},{l:"FRTB",r:"Capital por riesgo de mercado"}];
+  return matq("I7","I",19,"Estándares globales","Una cada estándar con su objetivo.",shuffle(all).slice(0,4),"Colombia no crea estos estándares: los adopta y adapta.","Cinco siglas, cinco objetivos distintos.")});
+POOL.I.push(function(){return mcq("I8","I",16,"Solvencia mínima en Colombia","¿Cuál es la solvencia TOTAL mínima exigida a un banco en Colombia?",[
+ ["9%",1],["4,5%",0,"Esa es la solvencia BÁSICA, no la total."],["8%",0,"Es el mínimo global de Basilea; en Colombia el total es 9%."],["12%",0,"No corresponde al mínimo vigente."]],
+ "Total ≥ 9% y básica ≥ 4,5% (más capital adicional y colchones según el régimen).","Es un número entero de un solo dígito.")});
+POOL.I.push(function(){return mcq("I9","I",15,"Colombia y los estándares","Afirmación: «Colombia crea los estándares de Basilea y los exporta a otros países».",[
+ ["Falso",1],["Verdadero",0,"Colombia es tomadora de estándares: los adapta, no los crea."]],
+ "Falso. Colombia adopta y adapta los estándares internacionales.","Piense en quién se sienta en Basilea.",{tf:true,shuffle:false})});
+
+/* ======= BLOQUE 3 · ACTIVOS DIGITALES ======= */
+POOL.D.push(function(){return mcq("D1","D",27,"Postura de la SFC","¿Cuál es la postura de la SFC frente a las criptomonedas?",[
+ ["No las regula, supervisa ni avala, pero tampoco las prohíbe",1],["Las prohíbe totalmente",0,"No es ilegal comprarlas, venderlas ni poseerlas."],["Son moneda de curso legal",0,"No lo son en Colombia."],["Las regula igual que las acciones",0,"No hay una ley específica que las equipare a valores."]],
+ "Cautela, no prohibición: son legales pero sin protección estatal.","Es una posición de cautela.")});
+POOL.D.push(function(){return mcq("D2","D",28,"El CLARITY Act","¿Qué busca el CLARITY Act de EE. UU.?",[
+ ["Repartir competencias entre la SEC y la CFTC",1],["Prohibir el bitcoin",0,"No lo prohíbe: define estructura de mercado."],["Eliminar la Reserva Federal",0,"No tiene relación con la Fed."],["Crear una criptomoneda oficial",0,"No crea una moneda oficial."]],
+ "Define la estructura del mercado cripto y reparte competencias; sigue estancado en el Senado.","Son dos reguladores que se reparten territorio.")});
+POOL.D.push(function(){
+  var Mt=ri(60,150,10),tipo=pick(["banco","exchange"]),exp=tipo==="banco"?Mt-50:Mt;
+  return {id:"D3",b:"D",slide:29,label:"Riesgo de custodia",type:"calc",unit:"millones de pesos",
+  text:tipo==="banco"?"Un ahorrador tiene "+M(Mt)+" en un banco que entra en liquidación. ¿Cuántos millones quedan EXPUESTOS (sin cobertura de Fogafín)?":"Un inversionista tiene "+M(Mt)+" en un exchange de criptoactivos que quiebra. ¿Cuántos millones quedan EXPUESTOS?",
+  ans:exp,tol:0.01,formula:tipo==="banco"?"Expuesto = saldo − mín(saldo; 50).":"Un exchange no tiene seguro de depósitos: expuesto = saldo completo.",
+  steps:tipo==="banco"?["Cubierto: mín("+Mt+"; 50) = 50","Expuesto: "+Mt+" − 50 = "+exp+" M"]:["Sin seguro de depósitos: protegido = 0","Expuesto: "+Mt+" M"],
+  partial:tipo==="banco"?"Fogafín cubre $50 M.":"Un exchange no es una entidad con seguro de depósitos.",
+  diag:function(v){if(tipo==="exchange"&&v===Mt-50)return "Aplicaste el seguro de Fogafín, que no cubre a un exchange.";if(tipo==="banco"&&v===Mt)return "Olvidaste el seguro: Fogafín cubre $50 M en un banco.";if(tipo==="banco"&&v===50)return "Diste lo cubierto; la pregunta es lo EXPUESTO.";return null},
+  exp:"La protección depende del tipo de entidad, no del monto. Pregunta clave: ¿quién me protege?",hint2:"¿Un exchange es una entidad con seguro de depósitos?"}});
+POOL.D.push(function(){
+  var all=[{l:"Colombia",r:"Sin ley específica; la SFC no regula ni avala"},{l:"Estados Unidos",r:"CLARITY Act estancado y GENIUS Act para stablecoins"},{l:"Unión Europea",r:"MiCA, reglamento integral ya en vigor"}];
+  return matq("D4","D",28,"Tres posturas","Una cada jurisdicción con su situación.",shuffle(all),"Ningún país tiene aún la respuesta completa.","Solo una de las tres ya tiene reglamento integral en vigor.")});
+POOL.D.push(function(){return mcq("D5","D",27,"¿Es ilegal tener cripto?","Afirmación: «Comprar, vender o poseer criptoactivos es ilegal en Colombia».",[
+ ["Falso",1],["Verdadero",0,"No es ilegal; simplemente carece de protección estatal."]],
+ "Falso. No están prohibidos, pero no cuentan con protección del Estado como un depósito bancario.","Cautela no es prohibición.",{tf:true,shuffle:false})});
+POOL.D.push(function(){return mcq("D6","D",29,"Seguro para cripto","Afirmación: «Los criptoactivos guardados en un exchange tienen el seguro de depósitos de Fogafín».",[
+ ["Falso",1],["Verdadero",0,"Fogafín asegura depósitos en entidades financieras, no criptoactivos en exchanges."]],
+ "Falso. Por eso la pérdida máxima en un exchange que quiebra es 100%.","El seguro protege depósitos bancarios.",{tf:true,shuffle:false})});
+POOL.D.push(function(){return mcq("D7","D",25,"Qué sí existe en Colombia","¿Cuál de estas cosas SÍ existe hoy en Colombia en materia de activos digitales?",[
+ ["Reporte de operaciones sospechosas a la UIAF (Circular 18 de 2021) y un sandbox",1],["Una ley específica de activos digitales",0,"Aún no existe una ley específica."],["Seguro de depósitos para criptoactivos",0,"No existe ese seguro."],["Supervisión plena de exchanges por la SFC",0,"La SFC dice que no regula ni supervisa esas operaciones."]],
+ "Hay reglas contra el lavado y un espacio de pruebas, pero no una ley específica.","Lo que existe es sobre lavado de activos.")});
+POOL.D.push(function(){return mcq("D8","D",28,"Caza el error","Una de estas afirmaciones es FALSA. ¿Cuál?",[
+ ["Colombia ya tiene una ley específica de activos digitales",1,""],["MiCA ya está en vigor en la UE",0,"Es verdadera."],["El CLARITY Act reparte competencias entre SEC y CFTC",0,"Es verdadera."],["El GENIUS Act regula las stablecoins en EE. UU.",0,"Es verdadera (ley de julio de 2025)."]],
+ "Colombia sigue sin ley específica: ese es precisamente el vacío que reconoce la SFC.","Una de las cuatro habla de un vacío que no existe.",{spot:true})});
+POOL.D.push(function(){return ordq("D9","D",26,"Cronología cripto en Colombia","Ordene los hitos, del más antiguo al más reciente.",[
+ {t:"2021: UIAF Circular Externa 18 (reporte de operaciones sospechosas)",n:"Primera regla contra el lavado con cripto."},{t:"2023: se anuncia proyecto de ley y sandbox con exchanges",n:"Hacienda, SFC y BanRep anuncian el proyecto."},{t:"2024: BanRep aclara que cripto no es moneda de curso legal",n:"Sin ley aprobada."},{t:"2026: hoja de ruta fintech y criptoactivos de la SFC",n:"Mesas de tokenización: bolsa y agro."}],
+ "Cinco años de avance, pero sin ley.","Empiece por la norma sobre lavado de activos.")});
+
+/* ======= BLOQUE 4 · TABLERO ======= */
+function semaforo(d,sev){var e=Math.abs(d)>=10?3:(Math.abs(d)>=3?2:1),r=sev>=6?3:(sev>=3?2:1),p=0.5*e+0.5*r;return {e:e,r:r,p:p,c:p>=2.5?"ROJO":(p>=1.75?"AMARILLO":"VERDE")}}
+POOL.T.push(function(){
+  var d=pick([0.8,1.5,2.1,5.5,8.6,12,18,25.7]),sg=pick([1,-1]),sev=ri(0,9),s=semaforo(d,sev);
+  return {id:"T1",b:"T",slide:36,label:"Puntaje del semáforo",type:"calc",unit:"puntaje (1 a 3)",
+  text:"Un mercado cambió "+(sg>0?"+":"−")+nf(d,1)+"% frente a su referencia y acumula severidad regulatoria total de "+sev+". Umbrales: estrés 3% y 10%; regulatorio 3 y 6; pesos 50/50. ¿Cuál es el puntaje?",
+  ans:s.p,tol:0.01,formula:"Estrés: |Δ|<3% → 1; 3% a <10% → 2; ≥10% → 3. Regulatorio: sev<3 → 1; 3 a <6 → 2; ≥6 → 3. Puntaje = 0,5·estrés + 0,5·regulatorio.",
+  steps:["Estrés: |"+nf(d,1)+"%| → nivel "+s.e,"Regulatorio: severidad "+sev+" → nivel "+s.r,"Puntaje = 0,5 × "+s.e+" + 0,5 × "+s.r+" = "+nf(s.p,2)],
+  partial:"El nivel de estrés de mercado es "+s.e+".",
+  diag:function(v){if(Math.abs(v-s.e)<0.01&&s.e!==s.p)return "Solo calculaste el nivel de estrés; falta combinarlo con el regulatorio (50/50).";if(Math.abs(v-s.r)<0.01&&s.r!==s.p)return "Solo calculaste el nivel regulatorio; falta combinarlo con el estrés de mercado (50/50).";return null},
+  exp:"El tablero combina lo que pasa en el mercado con lo que pasa en la regulación.",hint2:"Calcule por separado los dos niveles (1, 2 o 3)."}});
+POOL.T.push(function(){
+  var d=pick([0.8,1.5,2.1,5.5,8.6,12,18,25.7]),sev=ri(0,9),s=semaforo(d,sev);
+  var cols=["VERDE","AMARILLO","ROJO"],why={VERDE:"Verde: puntaje menor a 1,75.",AMARILLO:"Amarillo: de 1,75 a 2,49.",ROJO:"Rojo: 2,5 o más."};
+  return mcq("T2","T",36,"Color del semáforo","Un mercado cambió "+nf(d,1)+"% frente a su referencia y acumula severidad regulatoria "+sev+". Con los umbrales del tablero (3%/10% y 3/6; 50/50), ¿de qué color queda?",
+  cols.map(function(c){return [c,c===s.c,c===s.c?"":"No: el puntaje es "+nf(s.p,2)+". "+why[s.c]]}),
+  "Estrés "+s.e+", regulatorio "+s.r+" → puntaje "+nf(s.p,2)+" → "+s.c+".","Calcule primero el puntaje.",{shuffle:false})});
+POOL.T.push(function(){
+  var rows=[["la tasa del BanRep",12.25,12.00,"%"],["la TRM",3170.46,3218.75,""],["el COLCAP",2589.04,2626.71,""],["el VIX",16.00,17.50,""],["el oro",4166.90,5608.35,""]],r=pick(rows),ans=(r[1]/r[2]-1)*100;
+  return {id:"T3",b:"T",slide:33,label:"Variación frente a la referencia",type:"calc",unit:"% (un decimal, con signo)",
+  text:"En el tablero, "+r[0]+" está en "+nf(r[1],2)+" y su referencia es "+nf(r[2],2)+". ¿Cuál es la variación porcentual frente a la referencia?",
+  ans:ans,tol:0.15,formula:"Δ% = actual ÷ referencia − 1.",
+  steps:[nf(r[1],2)+" ÷ "+nf(r[2],2)+" = "+nf(r[1]/r[2],4),"− 1 = "+nf(ans,1)+"%"],
+  partial:nf(r[1],2)+" ÷ "+nf(r[2],2)+" = "+nf(r[1]/r[2],4)+".",
+  diag:function(v){if(Math.abs(v-(r[1]-r[2]))<0.2)return "Restaste valores absolutos; hay que dividir por la referencia para tener un porcentaje.";if(Math.abs(v+ans)<0.2&&ans!==0)return "Revisa el signo: ¿el valor actual quedó por encima o por debajo de la referencia?";return null},
+  exp:"El tablero mide el estrés comparando contra un punto de referencia.",hint2:"Dividir y restar 1."}});
+POOL.T.push(function(){return mcq("T4","T",36,"Mercado en rojo","En el semáforo del 16-oct-2026, ¿qué mercado quedó en ROJO y por qué?",[
+ ["Materias primas: oro −25,7% frente a su récord y alertas de severidad 6",1],["Divisas: la TRM se disparó",0,"Divisas quedó en verde: −1,5% y sin alertas."],["Capitales: el COLCAP cayó 10%",0,"Capitales quedó en verde: −1,4% y severidad 4."],["Monetario: el BanRep bajó la tasa",0,"El BanRep SUBIÓ la tasa; quedó en amarillo."]],
+ "Estrés 3 + regulatorio 3 → 3,0 → ROJO (≥ 2,5).","Es el mercado con la mayor caída frente a su referencia.")});
+POOL.T.push(function(){return mcq("T5","T",3,"Las tres preguntas","La sesión propone tres preguntas para toda regla. ¿A cuál responde principalmente el seguro de depósitos de Fogafín?",[
+ ["¿Quién paga si algo sale mal?",1],["¿Quién puede crearla?",0,"Eso lo responde el Congreso o el Gobierno."],["¿Quién la hace cumplir?",0,"Eso lo responde un supervisor como la SFC."],["¿Quién fija la tasa?",0,"Esa no es una de las tres preguntas; la tasa la fija el BanRep."]],
+ "Fogafín es el mecanismo que 'paga' cuando un banco quiebra.","Piense en la quiebra de un banco.")});
+
+/* ===== Motor ===== */
+var $app=document.getElementById("app");
+var BLOCK={N:"Marco nacional",I:"Internacional",D:"Activos digitales",T:"Tablero"};
+var HINT1=3,HINT2=5,START=100,NR=15,STREAK_BONUS=2;
+var DB=null,USER=null,UID=null,IS_OWNER=false,CAN_WRITE=null,ROWS=[],DBERR="",SOLO=true;
+var S={view:"home",name:"",team:"",rounds:[],i:0,budget:START,streak:0,best:0,right:0,log:[],q:null,stake:10,h1:false,h2:false,done:false,res:null,ui:{},confirmReset:false};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+
+function build(){
+  var plan={N:6,I:4,D:3,T:2},out=[];
+  Object.keys(plan).forEach(function(b){shuffle(POOL[b]).slice(0,plan[b]).forEach(function(f){out.push(f())})});
+  return shuffle(out);
+}
+function start(){
+  S.rounds=build();S.i=0;S.budget=START;S.streak=0;S.best=0;S.right=0;S.log=[];S.done=false;S.res=null;
+  S.view="play";next(true);
+}
+function next(first){
+  if(!first)S.i++;
+  if(S.i>=S.rounds.length||S.budget<=0)return finish();
+  var q=S.rounds[S.i];S.q=q;S.h1=false;S.h2=false;S.res=null;S.stake=Math.min(10,Math.max(5,S.budget>=10?10:5));
+  S.ui={sel:null,val:"",placed:[],gone:[],match:{},hintMatch:null};
+  if(q.type==="order"){S.ui.shuf=shuffle(q.items.map(function(x,k){return k}))}
+  if(q.type==="match"){S.ui.rights=shuffle(q.pairs.map(function(p){return p.r}))}
+  if(q.type==="mcq"&&q.shuffle)q.opts=shuffle(q.opts);
+  render();
+}
+function mult(){return S.h1&&S.h2?0.25:(S.h1||S.h2?0.5:1)}
+function spendHint(n){
+  var c=n===1?HINT1:HINT2;if(S.budget<c||S.res)return;S.budget-=c;
+  if(n===1){S.h1=true;var q=S.q;
+    if(q.type==="mcq"&&!q.tf){var w=q.opts.map(function(o,k){return o.ok?-1:k}).filter(function(k){return k>=0});S.ui.gone=shuffle(w).slice(0,2)}
+    if(q.type==="order"){S.ui.placed=[0]}
+    if(q.type==="match"){S.ui.hintMatch=q.pairs[0].l;S.ui.match[q.pairs[0].l]=q.pairs[0].r}
+  }else S.h2=true;
+  render();
+}
+function checkAnswer(){
+  var q=S.q,ok=false,detail="";
+  if(q.type==="mcq"){var o=q.opts[S.ui.sel];ok=o.ok;detail=ok?"":o.why;S.ui.picked=S.ui.sel}
+  else if(q.type==="calc"){
+    var raw=String(S.ui.val).trim().replace(/\s/g,"").replace("%","");
+    if(raw.indexOf(",")>-1&&raw.indexOf(".")>-1)raw=raw.replace(/\./g,"");
+    var v=parseFloat(raw.replace(",","."));if(!isFinite(v))return;
+    ok=Math.abs(v-q.ans)<=q.tol;S.ui.entered=v;
+    if(!ok){detail=(q.diag&&q.diag(v))||"Tu respuesta ("+nf(v,2)+") no coincide con "+nf(q.ans,2)+". Revisa la fórmula y cada paso."}
+  }else if(q.type==="order"){
+    var pl=S.ui.placed;ok=pl.every(function(k,p){return k===p});
+    if(!ok){var bad=pl.map(function(k,p){return k===p?-1:p}).filter(function(p){return p>=0});detail="Pusiste mal "+bad.length+" de "+pl.length+" posiciones."}
+  }else if(q.type==="match"){
+    var wrong=q.pairs.filter(function(p){return S.ui.match[p.l]!==p.r});ok=wrong.length===0;
+    detail=ok?"":"Fallaste "+wrong.length+" de "+q.pairs.length+" parejas: "+wrong.map(function(p){return "«"+p.l+"»"}).join(", ")+".";
+  }
+  var m=mult(),delta;
+  if(ok){S.streak++;delta=Math.round(S.stake*m*100)/100;
+    var bonus=(S.streak>=3&&!S.h1&&!S.h2)?STREAK_BONUS:0;delta+=bonus;S.budget+=delta;S.right++;S.res={ok:true,delta:delta,bonus:bonus}}
+  else{S.streak=0;delta=-S.stake;S.budget=Math.max(0,S.budget+delta);S.res={ok:false,delta:delta,detail:detail};
+    S.log.push({id:q.id,b:q.b,label:q.label,slide:q.slide,detail:detail,exp:q.exp})}
+  S.best=Math.max(S.best,S.budget);
+  render();
+}
+function tier(b){return b>=160?["Oficial de Cumplimiento Senior","Regulador de pies a cabeza."]:b>=125?["Oficial de Cumplimiento","Cuentas claras y presupuesto sano."]:b>=90?["Analista de Riesgos","Cumples, pero aún dejas dinero en la mesa."]:b>0?["Aprendiz","Hubo multas costosas: repasa el reporte de errores."]:["Entidad intervenida","La SFC tomó el control: quedaste sin presupuesto."]}
+function finish(){
+  S.done=true;S.view="end";var sc=Math.round(S.budget*10)/10;
+  S.final=sc;saveResult(sc);render();
+}
+
+/* ===== Persistencia (db) ===== */
+var writing=false,pending=null;
+function saveResult(sc){
+  if(!DB||!UID)return;
+  var errs={};S.log.forEach(function(e){errs[e.id]=(errs[e.id]||0)+1});
+  var mine=ROWS.filter(function(r){return r.id===UID})[0]||{};
+  var prev=mine.errs||{};Object.keys(errs).forEach(function(k){prev[k]=(prev[k]||0)+errs[k]});
+  var seen=mine.seen||{};S.rounds.slice(0,S.i+(S.budget>0?0:1)).forEach(function(q){seen[q.id]=(seen[q.id]||0)+1});
+  pending={name:S.name,team:S.team,best:Math.max(mine.best||0,sc),last:sc,games:(mine.games||0)+1,right:(mine.right||0)+S.right,errs:prev,seen:seen,t:Date.now()};
+  flush();
+}
+function flush(){
+  if(writing||!pending)return;writing=true;var d=pending;pending=null;
+  DB.doc("jugadores/"+UID).set(d).then(function(){DBERR=""}).catch(function(e){DBERR="No se pudo guardar tu puntaje en el ranking ("+((e&&e.code)||"error")+"). Pide al docente acceso de Colaborador."}).then(function(){writing=false;if(pending)flush();else render()});
+}
+function register(){
+  var n=S.name.trim();if(!n)return;ls("mc_name",n);ls("mc_team",S.team);
+  if(DB&&UID&&CAN_WRITE!==false){DB.doc("jugadores/"+UID).update({name:n,team:S.team,t:Date.now()}).catch(function(){
+    return DB.doc("jugadores/"+UID).set({name:n,team:S.team,best:0,last:0,games:0,right:0,errs:{},seen:{},t:Date.now()})}).catch(function(){})}
+  start();
+}
+
+/* ===== Vistas ===== */
+function fmtM(x){return "$"+nf(x,Math.abs(x%1)>0.001?1:0)+" M"}
+function hud(){
+  var b=S.budget,cls=b<30?"low":(b<60?"mid":"");
+  return '<div class="hud"><div class="bud"><div class="k">Presupuesto</div><div class="v">'+fmtM(b)+'</div><div class="bar"><i class="'+cls+'" style="width:'+Math.min(100,b/1.6)+'%"></i></div></div>'+
+   '<div><div class="k">Ronda</div><div class="v">'+Math.min(S.i+1,NR)+'/'+NR+'</div></div>'+
+   '<div><div class="k">Racha</div><div class="v">'+S.streak+'</div></div>'+
+   '<div><div class="k">Aciertos</div><div class="v">'+S.right+'</div></div></div>';
+}
+function home(){
+  var tm=["Equipo A","Equipo B","Equipo C","Equipo D","Equipo E","Equipo F"];
+  return '<div class="card stack"><h2>Registro</h2>'+
+   '<label class="f"><b>Tu nombre</b><input type="text" id="nm" maxlength="30" autocomplete="off" value="'+esc(S.name)+'"></label>'+
+   '<label class="f"><b>Tu equipo</b><select id="tm">'+tm.map(function(t){return '<option'+(S.team===t?" selected":"")+'>'+t+'</option>'}).join("")+'</select></label>'+
+   '<button class="primary" id="go"'+(S.name.trim()?"":" disabled")+'>Entrar a la mesa</button>'+
+   '<h3>Reglas</h3><ul class="rules">'+
+   '<li>Empiezas con <b>$100 M</b>. Son '+NR+' rondas de preguntas de la Sesión 6.</li>'+
+   '<li>Antes de responder, <b>apuestas</b> $5, $10 o $20 M. Si aciertas, ganas la apuesta; si fallas, la pierdes.</li>'+
+   '<li>Las pistas cuestan: <b>pista 1 = $'+HINT1+' M</b>, <b>pista 2 = $'+HINT2+' M</b>, y además <b>reducen lo que ganas</b> (×0,5 con una, ×0,25 con las dos).</li>'+
+   '<li>Racha de 3 aciertos seguidos sin pistas: <b>+$'+STREAK_BONUS+' M</b> por ronda.</li>'+
+   '<li>Si llegas a $0, la SFC interviene y se acaba el juego. Gana quien termine con más presupuesto.</li></ul></div>';
+}
+function qBody(){
+  var q=S.q,r=S.res,h='';
+  if(q.type==="mcq"){
+    h+='<div class="opts">'+q.opts.map(function(o,k){
+      var c="opt",L=String.fromCharCode(65+k)+".";
+      if(!r&&S.ui.gone.indexOf(k)>-1)c+=" gone";
+      if(r){if(o.ok)c+=" right";else if(S.ui.picked===k)c+=" wrong"}
+      return '<button class="'+c+'" data-o="'+k+'"'+(r||S.ui.gone.indexOf(k)>-1?" disabled":"")+(S.ui.sel===k&&!r?' style="border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy)"':"")+'><span class="l">'+(q.tf?(k?"F":"V"):L)+'</span><span>'+esc(o.t)+'</span></button>'}).join("")+'</div>';
+  }else if(q.type==="calc"){
+    h+='<div class="numrow"><input type="text" id="num" inputmode="decimal" autocomplete="off" placeholder="Tu cifra" value="'+esc(S.ui.val)+'"'+(r?" disabled":"")+'><span class="muted small">'+esc(q.unit)+'</span></div>';
+    if(S.h1||r)h+='<div class="hint"><b>Fórmula:</b> '+esc(q.formula)+'</div>';
+  }else if(q.type==="order"){
+    var pl=S.ui.placed,left=S.ui.shuf.filter(function(k){return pl.indexOf(k)<0});
+    h+='<div class="slots">'+q.items.map(function(_,p){var k=pl[p];var st=r&&k!==undefined?(k===p?"border-color:var(--ok)":"border-color:var(--bad)"):"";
+      return '<div class="slot" style="'+st+'"><span class="n">'+(p+1)+'</span>'+(k!==undefined?'<button data-rm="'+p+'"'+(r||(S.h1&&p===0)?" disabled":"")+' style="border-color:var(--line);color:var(--fg);font-weight:500;text-align:left">'+esc(q.items[k].t)+'</button>':'<span class="muted small">—</span>')+'</div>'}).join("")+'</div>';
+    if(!r)h+='<div class="pool">'+left.map(function(k){return '<button data-pl="'+k+'">'+esc(q.items[k].t)+'</button>'}).join("")+'</div>';
+  }else if(q.type==="match"){
+    h+='<div class="pairs">'+q.pairs.map(function(p){var v=S.ui.match[p.l]||"";var locked=r||S.ui.hintMatch===p.l;
+      var st=r?(v===p.r?"border-color:var(--ok)":"border-color:var(--bad)"):"";
+      return '<div class="pair"><div class="lft">'+esc(p.l)+'</div><select data-m="'+esc(p.l)+'"'+(locked?" disabled":"")+' style="'+st+'"><option value="">— elige —</option>'+S.ui.rights.map(function(x){return '<option'+(x===v?" selected":"")+'>'+esc(x)+'</option>'}).join("")+'</select></div>'}).join("")+'</div>';
+  }
+  return h;
+}
+function canCheck(){
+  var q=S.q;
+  if(q.type==="mcq")return S.ui.sel!==null;
+  if(q.type==="calc")return String(S.ui.val).trim()!=="";
+  if(q.type==="order")return S.ui.placed.length===q.items.length;
+  return q.pairs.every(function(p){return S.ui.match[p.l]});
+}
+function feedback(){
+  var q=S.q,r=S.res,h='<div class="fb '+(r.ok?"ok":"no")+'"><div class="stamp">'+(r.ok?"Aprobado":"Multa")+'</div>'+
+   '<div class="delta '+(r.ok?"up":"dn")+'">'+(r.delta>0?"+":"−")+fmtM(Math.abs(r.delta)).replace("$","$")+(r.bonus?" (incluye racha +$"+r.bonus+" M)":"")+(r.ok&&mult()<1?" · reducido por pistas ×"+nf(mult(),2):"")+'</div>';
+  if(!r.ok){
+    h+='<div class="why"><b>Por qué fallaste:</b> '+esc(r.detail||"")+'</div>';
+    if(q.type==="order")h+='<div class="why"><b>Orden correcto:</b><ol class="steps">'+q.items.map(function(x){return '<li>'+esc(x.t)+' — <span class="muted">'+esc(x.n)+'</span></li>'}).join("")+'</ol></div>';
+    if(q.type==="match")h+='<div class="why"><b>Parejas correctas:</b><ul>'+q.pairs.map(function(p){return '<li>'+esc(p.l)+' → '+esc(p.r)+'</li>'}).join("")+'</ul></div>';
+    if(q.type==="mcq")h+='<div class="why"><b>Respuesta correcta:</b> '+esc(q.opts.filter(function(o){return o.ok})[0].t)+'</div>';
+    if(q.type==="calc")h+='<div class="why"><b>Cómo se resuelve:</b><ol class="steps">'+q.steps.map(function(s){return '<li>'+esc(s)+'</li>'}).join("")+'</ol></div>';
+  }
+  h+='<div><b>Idea clave:</b> '+esc(q.exp)+'</div>';
+  var last=S.budget<=0||S.i>=S.rounds.length-1;
+  h+='<button class="primary" id="nx" style="align-self:flex-start">'+(last?"Ver resultado":"Siguiente ronda")+'</button></div>';
+  return h;
+}
+function play(){
+  var q=S.q,r=S.res,h=hud()+'<div class="card stack"><div class="qhead"><span class="tag">'+BLOCK[q.b]+' · '+(q.type==="calc"?"Cálculo":q.type==="order"?"Ordenar":q.type==="match"?"Emparejar":q.spot?"Caza el error":q.tf?"Verdadero / Falso":"Selección")+'</span><span class="muted small mono">Ronda '+(S.i+1)+'</span></div><div class="q">'+esc(q.text)+'</div>';
+  if(!r){
+    var mx=Math.min(20,S.budget);
+    h+='<div class="stakes"><span class="muted small">Apuesta:</span>'+[5,10,20].map(function(v){return '<button class="chip" data-st="'+v+'" aria-pressed="'+(S.stake===v)+'"'+(v>S.budget?" disabled":"")+'>$'+v+' M</button>'}).join("")+'</div>';
+    h+='<div class="hints"><button class="hbtn" data-h="1"'+(S.h1||S.budget<=HINT1?" disabled":"")+'>Pista 1 · −$'+HINT1+' M</button><button class="hbtn" data-h="2"'+(S.h2||S.budget<=HINT2?" disabled":"")+'>Pista 2 · −$'+HINT2+' M</button><span class="muted small">Cada pista reduce tu premio (hoy ×'+nf(mult(),2)+').</span></div>';
+    if(S.h1&&q.type==="mcq"&&q.tf)h+='<div class="hint">Pista 1: lee con cuidado; una sola palabra puede cambiar la respuesta.</div>';
+    else if(S.h1&&q.type==="order")h+='<div class="hint">Pista 1: te puse el primer elemento.</div>';
+    else if(S.h1&&q.type==="match")h+='<div class="hint">Pista 1: te resolví una pareja.</div>';
+    else if(S.h1&&q.type==="mcq")h+='<div class="hint">Pista 1: descarté dos opciones incorrectas.</div>';
+    if(S.h2)h+='<div class="hint"><b>Pista 2:</b> '+esc(q.type==="calc"?q.partial:q.hint2)+'</div>';
+  }
+  h+=qBody();
+  if(!r)h+='<button class="primary" id="ck" style="align-self:flex-start"'+(canCheck()?"":" disabled")+'>Responder · apuesto $'+S.stake+' M</button>';
+  h+='</div>';
+  if(r)h+=feedback();
+  return h;
+}
+function endView(){
+  var t=tier(S.final),pct=S.log.length;
+  var h='<div class="card stack"><div class="eyebrow">Resultado final</div><div class="big">'+fmtM(S.final)+'</div><h2>'+t[0]+'</h2><p class="muted" style="margin:0">'+t[1]+' Aciertos: '+S.right+' de '+Math.min(S.i+(S.budget>0?0:1),NR)+'.</p></div>';
+  if(S.log.length){
+    h+='<div class="card stack"><h2>Tu reporte de errores</h2><p class="muted small" style="margin:0">Estos son los conceptos que te costaron dinero. Repásalos con la explicación de cada uno.</p>'+
+     S.log.map(function(e){return '<div class="why" style="border:1px solid var(--line);border-radius:4px;padding:10px 12px"><b>'+esc(e.label)+'</b> <span class="muted small">· '+BLOCK[e.b]+'</span><div style="margin-top:4px">'+(e.detail?'<span style="color:var(--bad)">Tu error: '+esc(e.detail)+'</span><br>':'')+esc(e.exp)+'</div></div>'}).join("")+'</div>';
+  }else h+='<div class="banner">Sin errores: no pagaste ninguna multa.</div>';
+  if(!DB)h+='<div class="banner">Estás en modo individual: tu puntaje no se guarda en el ranking compartido.</div>';
+  h+='<div><button class="primary" id="again">Jugar de nuevo</button></div>';
+  return h;
+}
+/* Ranking y panel docente */
+function rankView(){
+  var rows=ROWS.slice().sort(function(a,b){return (b.best||0)-(a.best||0)});
+  var h='<div class="card stack"><h2>Ranking'+(DB?' <span class="live">en vivo</span>':'')+'</h2>';
+  if(!DB)h+='<div class="banner">Modo individual. Para ranking compartido, el docente debe compartir el enlace como Colaborador.</div>';
+  else if(DBERR)h+='<div class="banner">'+esc(DBERR)+'</div>';
+  if(!rows.length)h+='<p class="muted small" style="margin:0">Aún no hay puntajes. Sé el primero.</p>';
+  else{
+    h+='<div class="tw"><table><thead><tr><th></th><th>Jugador</th><th class="r">Mejor</th></tr></thead><tbody>'+rows.slice(0,15).map(function(r,k){return '<tr class="'+(r.id===UID?"me":"")+'"><td class="rk">'+(k+1)+'</td><td>'+esc(r.name||"—")+'<div class="muted small">'+esc(r.team||"")+' · '+(r.games||0)+' partidas</div></td><td class="r">'+fmtM(r.best||0)+'</td></tr>'}).join("")+'</tbody></table></div>';
+    var tm={};rows.forEach(function(r){if(!r.team||!r.games)return;var t=tm[r.team]=tm[r.team]||{s:0,n:0};t.s+=r.best||0;t.n++});
+    var tl=Object.keys(tm).map(function(k){return {t:k,v:tm[k].s/tm[k].n,n:tm[k].n}}).sort(function(a,b){return b.v-a.v});
+    if(tl.length)h+='<h3>Por equipos <span class="muted small">(promedio)</span></h3><div class="tw"><table><tbody>'+tl.map(function(t,k){return '<tr><td class="rk">'+(k+1)+'</td><td>'+esc(t.t)+' <span class="muted small">('+t.n+')</span></td><td class="r">'+fmtM(t.v)+'</td></tr>'}).join("")+'</tbody></table></div>';
+  }
+  return h+'</div>';
+}
+function teacherView(){
+  if(!IS_OWNER||!DB)return '';
+  var tot={},seen={};ROWS.forEach(function(r){Object.keys(r.errs||{}).forEach(function(k){tot[k]=(tot[k]||0)+r.errs[k]});Object.keys(r.seen||{}).forEach(function(k){seen[k]=(seen[k]||0)+r.seen[k]})});
+  var meta={};Object.keys(POOL).forEach(function(b){POOL[b].forEach(function(f){var q=f();meta[q.id]=q})});
+  var list=Object.keys(tot).map(function(k){return {id:k,n:tot[k],s:seen[k]||tot[k]}}).sort(function(a,b){return b.n/b.s-a.n/a.s||b.n-a.n}).slice(0,8),mx=1;
+  var h='<div class="card stack"><h2>Panel docente</h2><p class="muted small" style="margin:0">'+ROWS.length+' jugadores registrados. Conceptos con más errores (tasa de fallo):</p>';
+  if(!list.length)h+='<p class="muted small" style="margin:0">Aún no hay errores registrados.</p>';
+  else h+=list.map(function(e){var m=meta[e.id]||{label:e.id,slide:"?"};var pc=Math.min(100,Math.round(100*e.n/e.s));return '<div><div class="small"><b>'+esc(m.label)+'</b> <span class="muted">· '+e.n+'/'+e.s+' fallos'+'</span></div><div class="bk"><div class="bb" style="width:'+pc+'%"></div><span class="mono small">'+pc+'%</span></div></div>'}).join("");
+  h+=S.confirmReset?'<div class="banner">¿Borrar TODO el ranking? <button id="rs2" style="margin-left:8px;border-color:var(--bad);color:var(--bad)">Sí, borrar</button> <button id="rs0">Cancelar</button></div>':'<button id="rs1" style="align-self:flex-start">Reiniciar ranking</button>';
+  return h+'</div>';
+}
+function render(){
+  var main=S.view==="home"?home():S.view==="play"?play():endView();
+  var focus=document.activeElement&&document.activeElement.id;
+  $app.innerHTML='<div class="cols"><div class="stack">'+main+'</div><div class="stack">'+rankView()+teacherView()+'</div></div>';
+  bind();
+  if(focus){var el=document.getElementById(focus);if(el&&el.tagName==="INPUT"){el.focus();try{el.setSelectionRange(el.value.length,el.value.length)}catch(e){}}}
+}
+function bind(){
+  var $=function(s){return $app.querySelector(s)},$$=function(s){return $app.querySelectorAll(s)};
+  var nm=$("#nm");if(nm){nm.oninput=function(){S.name=nm.value;$("#go").disabled=!nm.value.trim()};nm.onkeydown=function(e){if(e.key==="Enter"&&nm.value.trim())register()}}
+  var tm=$("#tm");if(tm)tm.onchange=function(){S.team=tm.value};
+  var go=$("#go");if(go)go.onclick=function(){S.team=$("#tm").value;register()};
+  Array.prototype.forEach.call($$("[data-st]"),function(b){b.onclick=function(){S.stake=+b.dataset.st;render()}});
+  Array.prototype.forEach.call($$("[data-h]"),function(b){b.onclick=function(){spendHint(+b.dataset.h)}});
+  Array.prototype.forEach.call($$("[data-o]"),function(b){b.onclick=function(){S.ui.sel=+b.dataset.o;render()}});
+  var num=$("#num");if(num){num.oninput=function(){S.ui.val=num.value;$("#ck").disabled=!num.value.trim()};num.onkeydown=function(e){if(e.key==="Enter"&&num.value.trim())checkAnswer()}}
+  Array.prototype.forEach.call($$("[data-pl]"),function(b){b.onclick=function(){S.ui.placed.push(+b.dataset.pl);render()}});
+  Array.prototype.forEach.call($$("[data-rm]"),function(b){b.onclick=function(){S.ui.placed.splice(+b.dataset.rm,1);render()}});
+  Array.prototype.forEach.call($$("[data-m]"),function(s){s.onchange=function(){S.ui.match[s.dataset.m]=s.value;render()}});
+  var ck=$("#ck");if(ck)ck.onclick=checkAnswer;
+  var nx=$("#nx");if(nx)nx.onclick=function(){next()};
+  var ag=$("#again");if(ag)ag.onclick=start;
+  var r1=$("#rs1");if(r1)r1.onclick=function(){S.confirmReset=true;render()};
+  var r0=$("#rs0");if(r0)r0.onclick=function(){S.confirmReset=false;render()};
+  var r2=$("#rs2");if(r2)r2.onclick=function(){
+    var ids=ROWS.map(function(r){return r.id});S.confirmReset=false;
+    Promise.all(ids.map(function(id){return DB.doc("jugadores/"+id).delete()})).catch(function(){DBERR="No se pudo borrar el ranking."}).then(render)};
+}
+
+/* ===== Arranque: la página funciona sola; el ranking se enciende si hay db ===== */
+S.name=ls("mc_name")||"";S.team=ls("mc_team")||"Equipo A";
+render();
+(async function(){
+  try{
+    var u=null;try{u=await claude.use("user")}catch(e){}
+    var d=null;try{d=await claude.use("db")}catch(e){}
+    USER=u;
+    if(u){try{UID=await u.id()}catch(e){} try{IS_OWNER=await u.isOwner()}catch(e){} try{CAN_WRITE=await u.can("data.write")}catch(e){}}
+    if(d&&UID){
+      DB=d;
+      DB.collection("jugadores").onSnapshot(function(snap){ROWS=snap.docs.map(function(x){var o=x.data()||{};o.id=x.id;return o});
+        var mine=ROWS.filter(function(r){return r.id===UID})[0];if(mine&&!S.name&&mine.name){S.name=mine.name;S.team=mine.team||S.team}
+        if(!(S.view==="play"&&document.activeElement&&document.activeElement.id==="num"))render()},
+        function(e){DBERR="No se pudo leer el ranking.";render()});
+    }
+    render();
+  }catch(e){render()}
+})();
+
+</script></body></html>
